@@ -3,7 +3,8 @@
 
 ![Example image](example.jpg)
 
-This repositry creates a basic [ASCOM](https://www.ascom-standards.org/) Alpaca Camera driver that simulates the night sky using the [Gaia DR2 catalog](https://www.cosmos.esa.int/web/gaia/dr2) and its photometry.  It requires an Alpaca based telescope driver to be running and connected to the simulator (via [config.yml](src/config.yml)).  
+This repositry creates a basic [ASCOM](https://www.ascom-standards.org/) Alpaca Camera driver that simulates the night sky using the [Gaia DR2 catalog](https://www.cosmos.esa.int/web/gaia/dr2) and its photometry.  It requires an Alpaca based telescope driver to be running and connected to the simulator (via [config.yml](src/config.yml)).
+
 When an image is requested, the simulator will:
 1. request the telescope's current (ra, dec) coordinates.
 2. call Gaia (or [local db](https://github.com/ppp-one/gaia-tmass-sqlite)) to get the stars in the field of view.
