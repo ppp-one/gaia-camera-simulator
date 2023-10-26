@@ -19,5 +19,6 @@ CAMERA:
   skybackground: 15 # [e]
   qe: 0.6 # average qe (after inefficiencies of telescope/filters) [0-1]
   collecting_area: 0.7 # effective telescope collecting area (could get from telescope driver, but decided not.) [m^2]
+  seeing: 2.5 # Gaussian profile seeing [arcsec]
 
 

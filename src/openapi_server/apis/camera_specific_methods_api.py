@@ -94,7 +94,7 @@ def tracking_error():
     # sum up to get total error
     return 1/3600 * t, 0.5/3600 * t
 
-def generate_image(exp_time, light = 1, seeing=2.5):
+def generate_image(exp_time, light = 1, seeing=config['CAMERA']['seeing']):
 
     if light == 1:
 
