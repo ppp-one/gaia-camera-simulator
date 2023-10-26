@@ -33,7 +33,7 @@ uvicorn openapi_server.main:app --host 0.0.0.0 --port 8080 --log-level warning
 
 Then use the following [example.py](example.py) to test the simulator, snippet below:
 
-```
+```python
 # connect to telescope
 telescope = Telescope(config['TELESCOPE_IP'], config['TELESCOPE_DEVICE_NUMBER'])
 telescope.Connected = True
