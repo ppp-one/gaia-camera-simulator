@@ -1,9 +1,9 @@
 TELESCOPE_IP: '10.211.55.3:11111'
 TELESCOPE_DEVICE_NUMBER: 0
+FOCUS_IP: '10.211.55.3:11111'
+FOCUS_DEVICE_NUMBER: 0
 TRACKING_ERROR: False # simulate tracking error
 TMASS: False    # use 2MASS crossmatched catalog, else uses Gaia RP photometry
-LOCAL_DB: False # use local database (see https://github.com/ppp-one/gaia-tmass-sqlite)
-LOCAL_DB_PATH: 'pointing.db'
 FLATS: False   # simulate flat fielding
 CAMERA:
   width: 2048 # [pixels]
