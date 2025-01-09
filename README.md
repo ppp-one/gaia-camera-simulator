@@ -39,6 +39,10 @@ Then use the following [example.py](example.py) to test the simulator, snippet b
 telescope = Telescope(config['TELESCOPE_IP'], config['TELESCOPE_DEVICE_NUMBER'])
 telescope.Connected = True
 
+# connect to focuser
+focuser = Telescope(config['FOCUSER_IP'], config['FOCUSER_DEVICE_NUMBER'])
+focuser.Connected = True
+
 # connect to camera
 camera = Camera('localhost:8080', 0)
 camera.Connected = True
