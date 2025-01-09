@@ -1,24 +1,29 @@
 TELESCOPE_IP: '10.211.55.3:11111'
 TELESCOPE_DEVICE_NUMBER: 0
-FOCUS_IP: '10.211.55.3:11111'
-FOCUS_DEVICE_NUMBER: 0
+FOCUSER_IP: '10.211.55.3:11111'
+FOCUSER_DEVICE_NUMBER: 0
 TRACKING_ERROR: False # simulate tracking error
 TMASS: False    # use 2MASS crossmatched catalog, else uses Gaia RP photometry
 FLATS: False   # simulate flat fielding
 CAMERA:
-  width: 2048 # [pixels]
-  height: 2048 # [pixels]
-  plate_scale: 0.35 # [arcsec/pixel]
+  name: "test-gaia-cam"
+  width: 1024 # [pixels]
+  height: 1280 # [pixels]
+  bin_x: 1 # not used
+  bin_y: 1 # not used
   pitch: 12 # [microns]
-  welldepth: 65535 #[e-]
-  maxadu: 65535 # [ADU]
-  bias: 300 # [ADU]
-  gain: 1.0 # [e-/ADU]
-  readnoise: 6.2 # [e-]
-  darkcurrent: 0.2 # [e-/s]
-  skybackground: 15 # [e]
-  qe: 0.6 # average qe (after inefficiencies of telescope/filters) [0-1]
-  collecting_area: 0.7 # effective telescope collecting area (could get from telescope driver, but decided not.) [m^2]
-  seeing: 2.5 # Gaussian profile seeing [arcsec]
+  max_adu: 16000 # [ADU]
+  well_depth: 55000 #[e-]
+  bias: 3000 # [ADU]
+  gain: 5 # [e-/ADU]
+  read_noise: 90 # [e-]
+  dark_current: 150 # [e-/s]
+  average_quantum_efficiency: 0.6 # average qe (after inefficiencies of telescope/filters) [0-1]
+SITE:
+  sky_background: 1000 # e-/m2/arcsec2/s
+  seeing: 1.5 # [arcsec]
+FOCUSER:
+  sharp_pos: 10000 # [steps]
+  blurred_offset: 100 # when 2x seeing begins: seeing * ( 1 + np.abs(focuser.Position - config['FOCUSER']['sharp_pos'])/config['FOCUSER']['blurred_offset'] ) [steps]
 
 

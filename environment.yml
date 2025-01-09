@@ -87,6 +87,7 @@ dependencies:
   - pip:
     - alpyca==2.0.4
     - annotated-types==0.6.0
+    - cabaret==0.1.2
     - anyio==3.7.1
     - certifi==2023.7.22
     - click==8.1.7

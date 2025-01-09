@@ -1,12 +1,13 @@
 # Coding: utf-8
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import astropy.units as u
 import cabaret
 import numpy as np
 import yaml
 from alpaca.exceptions import *
+from alpaca.focuser import *
 from alpaca.telescope import *
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord, get_sun
 from astropy.time import Time
@@ -25,68 +26,137 @@ from openapi_server.models.string_response import StringResponse
 with open("config.yml", "r") as stream:
     config = yaml.safe_load(stream)
 
+telescope = Telescope(config["TELESCOPE_IP"], config["TELESCOPE_DEVICE_NUMBER"])
+focuser = Focuser(config["FOCUSER_IP"], config["FOCUSER_DEVICE_NUMBER"])
 
-class Camera:
+cabaret_camera = cabaret.Camera(
+    name=config["CAMERA"]["name"],
+    width=config["CAMERA"]["width"],  # pixels
+    height=config["CAMERA"]["height"],  # pixels
+    bin_x=config["CAMERA"]["bin_x"],  # binning factor in x
+    bin_y=config["CAMERA"]["bin_y"],  # binning factor in y
+    pitch=config["CAMERA"]["pitch"],  # pixel pitch, microns
+    max_adu=config["CAMERA"]["max_adu"],  # maximum ADU value
+    well_depth=config["CAMERA"]["well_depth"],  # electrons
+    bias=config["CAMERA"]["bias"],  # ADU
+    gain=config["CAMERA"]["gain"],  # e-/ADU
+    read_noise=config["CAMERA"]["read_noise"],  # e-
+    dark_current=config["CAMERA"]["dark_current"],  # e-/s
+    average_quantum_efficiency=config["CAMERA"][
+        "average_quantum_efficiency"
+    ],  # fraction
+)
+
+cabaret_site = cabaret.Site(
+    sky_background=config["SITE"]["sky_background"],  # e-/m2/arcsec2/s
+    seeing=config["SITE"]["seeing"],  # arcsec
+)
+
+cabaret_telescope = cabaret.Telescope(
+    focal_length=telescope.FocalLength,  # meters
+    diameter=telescope.ApertureDiameter,  # meters
+)
+
+
+class ASCOM_Camera:
     device_number: int = 0
-    width: int = config["CAMERA"]["width"]
-    height: int = config["CAMERA"]["height"]
+    width: int = cabaret_camera.width
+    height: int = cabaret_camera.height
     startx: int = 0
     starty: int = 0
-    numx: int = config["CAMERA"]["width"]
-    numy: int = config["CAMERA"]["height"]
-    binx: int = 1
-    biny: int = 1
-    gain: float = config["CAMERA"]["gain"]
-    pitch: float = config["CAMERA"]["pitch"]
-    plate_scale: float = config["CAMERA"]["plate_scale"]
-    welldepth: int = config["CAMERA"]["welldepth"]
-    bias: int = config["CAMERA"]["bias"]
-    maxadu: int = config["CAMERA"]["maxadu"]
-    readnoise: float = config["CAMERA"]["readnoise"]
-    darkcurrent: float = config["CAMERA"]["darkcurrent"]
-    skybackground: float = config["CAMERA"]["skybackground"]
-    qe: float = config["CAMERA"]["qe"]
-    collecting_area: float = config["CAMERA"]["collecting_area"]
-    temperature: float = -10
-    sensor_name: str = "gaia-camera-simulated"
+    numx: int = cabaret_camera.width
+    numy: int = cabaret_camera.height
+    binx: int = cabaret_camera.bin_x
+    biny: int = cabaret_camera.bin_y
+    gain: float = cabaret_camera.gain
+    pitch: float = cabaret_camera.pitch
+    welldepth: int = cabaret_camera.well_depth
+    bias: int = cabaret_camera.bias
+    maxadu: int = cabaret_camera.max_adu
+    sensor_name: str = cabaret_camera.name
     imageready: bool = False
     imagearray: np.ndarray = None
     lastexposurestarttime: datetime = None
     lastexposureduration: float = None
     state: int = 0
+    temperature: float = -10
     cooleron: bool = False
 
 
-camera = Camera()
+camera = ASCOM_Camera()
+
+
+# @dataclass
+# class Camera:
+#     name: str = "gaia-camera-simulated"
+#     width: int = 1024  # pixels
+#     height: int = 1024  # pixels
+#     bin_x: int = 1  # binning factor in x
+#     bin_y: int = 1  # binning factor in y
+#     pitch: float = 13.5  # pixel pitch, microns
+#     plate_scale: float | None = (
+#         None  # arcsec/pixel (calculated from pitch+telescope if None)
+#     )
+#     max_adu: int = 2**16 - 1  # maximum ADU value
+#     well_depth: int = 2**16 - 1  # electrons
+#     bias: int = 300  # ADU
+#     gain: float = 1.0  # e-/ADU
+#     read_noise: float = 6.2  # e-
+#     dark_current: float = 0.2  # e-/s
+#     average_quantum_efficiency: float = 0.8  # fraction
+
+
+# @dataclass
+# class Telescope:
+#     focal_length: float = 8.0  # meters
+#     diameter: float = 1.0  # meters
+#     collecting_area: float | None = None  # m2 (calculated from diameter if None)
+
+
+# @dataclass
+# class Site:
+#     sky_background: float = 150  # for I+z band in Paranal, e-/m2/arcsec2/s
+#     seeing: float = 1.3  # arcsec
+
 
 print("Starting simulator with config:")
 print(config)
 
-telescope = Telescope(config["TELESCOPE_IP"], config["TELESCOPE_DEVICE_NUMBER"])
 
 if config["FLATS"]:
     obs_lat = telescope.SiteLatitude
     obs_lon = telescope.SiteLongitude
     obs_alt = telescope.SiteElevation
 
-start_time = datetime.utcnow()
+start_time = datetime.now(UTC)
 
 
 def tracking_error():
     ## add 1 arcsec drift in RA and 0.5 arcsec drift in Dec every second
-    t = (datetime.utcnow() - start_time).total_seconds()
+    t = (datetime.now(UTC) - start_time).total_seconds()
 
     # sum up to get total error
     return 1 / 3600 * t, 0.5 / 3600 * t
 
 
-def generate_image(exp_time, light=1, seeing=config["CAMERA"]["seeing"]):
+def generate_image(exp_time, light=1):
 
     if light == 1:
 
         # get telescope position
         ra = (telescope.RightAscension / 24) * 360
         dec = telescope.Declination
+
+        seeing_multiplier = (
+            1
+            + np.abs(focuser.Position - config["FOCUSER"]["sharp_pos"])
+            / config["FOCUSER"]["blurred_offset"]
+        )
+
+        if seeing_multiplier > 5:
+            seeing_multiplier = 5
+
+        cabaret_site.seeing = config["SITE"]["seeing"] * seeing_multiplier  # arcsec
 
         print()
         print("Telescope position:")
@@ -99,11 +169,17 @@ def generate_image(exp_time, light=1, seeing=config["CAMERA"]["seeing"]):
             ra += tracking_error_ra
             dec += tracking_error_dec
 
-        # call gaia
-        center = SkyCoord(ra=ra, dec=dec, unit="deg")
-        dateobs = datetime.utcnow()
-
-        image = cabaret.generate_image(ra, dec, exposure_time)
+        image = cabaret.generate_image(
+            ra=ra,
+            dec=dec,
+            exp_time=exp_time,
+            dateobs=datetime.now(UTC),
+            light=light,
+            camera=cabaret_camera,
+            site=cabaret_site,
+            telescope=cabaret_telescope,
+            tmass=config["TMASS"],
+        )
 
         if config["FLATS"]:
 
@@ -120,11 +196,11 @@ def generate_image(exp_time, light=1, seeing=config["CAMERA"]["seeing"]):
 
             # from https://arxiv.org/pdf/1407.8283.pdf scaled to match a zYJ obs (~calibrated from single flat. This is fine for testing.)
             flux_sky = (
-                (camera.plate_scale) ** 2
+                (cabaret_camera.plate_scale) ** 2
                 * 100
                 * 10 ** (0.415 * sun_alt + 5.926)
-                * camera.qe
-                * camera.collecting_area
+                * cabaret_camera.average_quantum_efficiency
+                * cabaret_telescope.collecting_area
                 * exp_time
             )  # [electrons pixel^-1 ]
 
@@ -136,26 +212,16 @@ def generate_image(exp_time, light=1, seeing=config["CAMERA"]["seeing"]):
 
     else:
         # make base image with only dark current
-        image = (
-            np.ones((camera.numy, camera.numx)) * (camera.darkcurrent) * exp_time
-        )  # [electrons pixel^-1]
-
-        # add poisson noise based on signal
-        image = np.random.poisson(image).astype(np.float64)
-
-        # add read noise
-        image += np.random.normal(
-            0, camera.readnoise, (camera.numy, camera.numx)
-        ).astype(np.float64)
-
-    # convert to adu and add camera's bias
-    image = image / camera.gain + camera.bias  # [adu]
-
-    # clip to max adu
-    image = np.clip(image, 0, camera.maxadu)
-
-    # make image 16 bit
-    image = image.astype(np.uint16)
+        image = cabaret.generate_image(
+            ra=0,
+            dec=0,
+            exp_time=exp_time,
+            dateobs=datetime.now(UTC),
+            light=light,
+            camera=cabaret_camera,
+            site=cabaret_site,
+            telescope=cabaret_telescope,
+        )
 
     # save as fits
     # if config['SAVE_IMAGES']:
@@ -163,7 +229,7 @@ def generate_image(exp_time, light=1, seeing=config["CAMERA"]["seeing"]):
     #     hdr = hdu.header
     #     hdr.update(wcs.to_header())
     #     hdr['EXPTIME'] = exp_time
-    #     hdr['DATE-OBS'] = datetime.utcnow().isoformat()
+    #     hdr['DATE-OBS'] = datetime.now(UTC).isoformat()
     #     hdr['INSTRUME'] = camera.sensor_name
     #     hdr['TELESCOP'] = 'Gaia'
     #     hdr['RA'] = center.ra.deg
@@ -840,7 +906,7 @@ async def imageready_get(
         raise HTTPException(status_code=404, detail="Device not found.")
 
     if (
-        datetime.utcnow() - camera.lastexposurestarttime
+        datetime.now(UTC) - camera.lastexposurestarttime
     ).total_seconds() > camera.lastexposureduration:
         camera.imageready = True
         camera.state = 0
@@ -1515,7 +1581,7 @@ async def startexposure_put(
 
     camera.imageready = False
 
-    camera.lastexposurestarttime = datetime.utcnow()
+    camera.lastexposurestarttime = datetime.now(UTC)
 
     camera.lastexposureduration = Duration
 
