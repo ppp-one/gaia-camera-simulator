@@ -19,6 +19,7 @@ The simulator also has the option of adding scattered sunlight to the image for 
 git clone https://github.com/ppp-one/gaia-camera-simulator.git
 cd gaia-camera-simulator
 conda env create -f environment.yml
+conda activate gaia-camera
 ```
 
 ## Run

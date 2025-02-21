@@ -57,6 +57,8 @@ cabaret_telescope = cabaret.Telescope(
     diameter=telescope.ApertureDiameter,  # meters
 )
 
+print(cabaret_telescope)
+
 
 class ASCOM_Camera:
     device_number: int = 0
@@ -208,7 +210,9 @@ def generate_image(exp_time, light=1):
                 flux_sky = 1e9
 
             # add sky background with poisson noise
-            image += np.random.poisson(flux_sky, (camera.numy, camera.numx))
+            image += np.random.poisson(flux_sky, (camera.numy, camera.numx)).astype(
+                np.uint16
+            )
 
     else:
         # make base image with only dark current
@@ -222,6 +226,9 @@ def generate_image(exp_time, light=1):
             site=cabaret_site,
             telescope=cabaret_telescope,
         )
+
+    # clip image to max adu
+    image = np.clip(image, 0, cabaret_camera.max_adu)
 
     # save as fits
     # if config['SAVE_IMAGES']:

@@ -1,10 +1,10 @@
-TELESCOPE_IP: '10.211.55.3:11111'
+TELESCOPE_IP: 'localhost'
 TELESCOPE_DEVICE_NUMBER: 0
-FOCUSER_IP: '10.211.55.3:11111'
+FOCUSER_IP: 'localhost'
 FOCUSER_DEVICE_NUMBER: 0
 TRACKING_ERROR: False # simulate tracking error
 TMASS: False    # use 2MASS crossmatched catalog, else uses Gaia RP photometry
-FLATS: False   # simulate flat fielding
+FLATS: True   # simulate flat fielding
 CAMERA:
   name: "test-gaia-cam"
   width: 1024 # [pixels]
@@ -23,7 +23,7 @@ SITE:
   sky_background: 1000 # e-/m2/arcsec2/s
   seeing: 1.5 # [arcsec]
 FOCUSER:
-  sharp_pos: 10000 # [steps]
+  sharp_pos: 25000 # [steps]
   blurred_offset: 100 # when 2x seeing begins: seeing * ( 1 + np.abs(focuser.Position - config['FOCUSER']['sharp_pos'])/config['FOCUSER']['blurred_offset'] ) [steps]
 
 
