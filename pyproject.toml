@@ -1,0 +1,45 @@
+[project]
+name = "gaia-camera-simulator"
+description = "Basic ASCOM Alpaca Camera driver that simulates the night sky using the Gaia DR2 catalog and its photometry."
+version = "0.0.1"
+authors = [
+    {name = "Peter Pedersen"},
+    {name = "David Degen"},
+]
+keywords = ["alpaca", "camera simulator", "ASCOM"]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "alpyca @ git+https://github.com/ppp-one/alpyca.git",
+    "astropy",
+    "astroquery",
+    "cabaret",
+    "fastapi[standard]",
+    "pandas",
+    "pydantic",
+    "psutil",
+    "pyyaml",
+    "scipy",
+    "sqlite3worker",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "black==24.3.0", "pytest"]
+test = ["pytest"]
+
+[tool.setuptools]
+packages = { find = { where = ["src"] } }
+
+[project.urls]
+"Source" = "https://github.com/ppp-one/gaia-camera-simulator"
+"Bug Tracker" = "https://github.com/ppp-one/gaia-camera-simulator/issues"

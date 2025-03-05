@@ -1,0 +1,28 @@
+TRACKING_ERROR: False # simulate tracking error
+TMASS: False    # use 2MASS crossmatched catalog, else uses Gaia RP photometry
+FLATS: False   # simulate flat fielding
+Camera:
+  name: "test-gaia-cam"
+  width: 2048 # [pixels]
+  height: 2048 # [pixels]
+  bin_x: 1 # not used
+  bin_y: 1 # not used
+  plate_scale: 0.35 # [arcsec/pixel]
+  pitch: 13.5 # [microns]
+  welldepth: 65535 #[e-]
+  maxadu: 64000 # [ADU]
+  well_depth: 64000 #[e-]
+  bias: 300 # [ADU]
+  gain: 1 # [e-/ADU]
+  readnoise: 6.2 # [e-]
+  darkcurrent: 0.2 # [e-/s]
+  qe: 0.6 # average qe (after inefficiencies of telescope/filters) [0-1]
+  collecting_area: 0.7
+  skybackground: 150 # e-/m2/arcsec2/s
+  seeing: 1.5 # [arcsec]
+Focuser:
+  sharp_pos: 6950 # [steps]  # (6800, 7100)
+  blurred_offset: 20 # when 2x seeing begins: seeing * ( 1 + np.abs(focuser.Position - config['FOCUSER']['sharp_pos'])/config['FOCUSER']['blurred_offset'] ) [steps]
+Site:
+  sky_background: 1000 # e-/m2/arcsec2/s
+  seeing: 1.5 # [arcsec]
