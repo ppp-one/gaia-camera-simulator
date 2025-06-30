@@ -1,0 +1,3 @@
+TRACKING_ERROR: False # simulate tracking error
+TMASS: True    # use 2MASS crossmatched catalog, else uses Gaia RP photometry
+FLATS: False   # simulate flat fielding

@@ -9,12 +9,12 @@ from fastapi import (  # Noqa: F401
     HTTPException
 )
 
-from openapi_server.models.bool_response import BoolResponse
-from openapi_server.models.device_type_device_number_commandblind_put_request import DeviceTypeDeviceNumberCommandblindPutRequest
-from openapi_server.models.int_response import IntResponse
-from openapi_server.models.method_response import MethodResponse
-from openapi_server.models.string_array_response import StringArrayResponse
-from openapi_server.models.string_response import StringResponse
+from gaia_camera_simulator.models.bool_response import BoolResponse
+from gaia_camera_simulator.models.device_type_device_number_commandblind_put_request import DeviceTypeDeviceNumberCommandblindPutRequest
+from gaia_camera_simulator.models.int_response import IntResponse
+from gaia_camera_simulator.models.method_response import MethodResponse
+from gaia_camera_simulator.models.string_array_response import StringArrayResponse
+from gaia_camera_simulator.models.string_response import StringResponse
 
 
 router = APIRouter()

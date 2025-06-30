@@ -153,3 +153,12 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Ignore all .yaml files in the config directory
+*.yml
+*.yaml
+
+# Exclude specific .yaml files from being ignored
+!/src/gaia_camera_simulator/observatory_configs/default.yaml
+!/src/gaia_camera_simulator/observatory_configs/andor_visible.yaml
+!/src/gaia_camera_simulator/observatory_configs/spirit.yaml
