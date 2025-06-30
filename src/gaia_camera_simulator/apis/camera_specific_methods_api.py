@@ -1,61 +1,69 @@
 # Coding: utf-8
-
+import logging
 from datetime import UTC, datetime
 
 import astropy.units as u
 import cabaret
 import numpy as np
-import yaml
-from alpaca.exceptions import *
-from alpaca.focuser import *
-from alpaca.telescope import *
-from astropy.coordinates import AltAz, EarthLocation, SkyCoord, get_sun
+
+# from alpaca.exceptions import *
+from alpaca.focuser import Focuser
+from alpaca.telescope import Telescope
+from astropy.coordinates import AltAz, EarthLocation, get_sun
 from astropy.time import Time
 from fastapi import APIRouter, Form, HTTPException, Path, Query  # Noqa: F401
 from fastapi.responses import StreamingResponse
 
-from openapi_server.models.bool_response import BoolResponse
-from openapi_server.models.double_response import DoubleResponse
-from openapi_server.models.image_array_response import ImageArrayResponse
-from openapi_server.models.int_response import IntResponse
-from openapi_server.models.method_response import MethodResponse
-from openapi_server.models.string_array_response import StringArrayResponse
-from openapi_server.models.string_response import StringResponse
+from gaia_camera_simulator.config_manager import ConfigManager
+from gaia_camera_simulator.models.bool_response import BoolResponse
+from gaia_camera_simulator.models.double_response import DoubleResponse
+from gaia_camera_simulator.models.image_array_response import ImageArrayResponse
+from gaia_camera_simulator.models.int_response import IntResponse
+from gaia_camera_simulator.models.method_response import MethodResponse
+from gaia_camera_simulator.models.string_array_response import StringArrayResponse
+from gaia_camera_simulator.models.string_response import StringResponse
 
-# load config file
-with open("config.yml", "r") as stream:
-    config = yaml.safe_load(stream)
+logger = logging.getLogger("gaia-camera-simulator")
+logger.setLevel(logging.INFO)
 
-telescope = Telescope(config["TELESCOPE_IP"], config["TELESCOPE_DEVICE_NUMBER"])
-focuser = Focuser(config["FOCUSER_IP"], config["FOCUSER_DEVICE_NUMBER"])
+CONFIG = ConfigManager().combine_configs()
+logger.info(f"Starting simulator with config: {CONFIG}")
 
-cabaret_camera = cabaret.Camera(
-    name=config["CAMERA"]["name"],
-    width=config["CAMERA"]["width"],  # pixels
-    height=config["CAMERA"]["height"],  # pixels
-    bin_x=config["CAMERA"]["bin_x"],  # binning factor in x
-    bin_y=config["CAMERA"]["bin_y"],  # binning factor in y
-    pitch=config["CAMERA"]["pitch"],  # pixel pitch, microns
-    max_adu=config["CAMERA"]["max_adu"],  # maximum ADU value
-    well_depth=config["CAMERA"]["well_depth"],  # electrons
-    bias=config["CAMERA"]["bias"],  # ADU
-    gain=config["CAMERA"]["gain"],  # e-/ADU
-    read_noise=config["CAMERA"]["read_noise"],  # e-
-    dark_current=config["CAMERA"]["dark_current"],  # e-/s
-    average_quantum_efficiency=config["CAMERA"][
-        "average_quantum_efficiency"
-    ],  # fraction
+
+def get_config_from_string(name) -> dict:
+    key_list = [key for key in CONFIG if key.lower() == name.lower()]
+    if len(key_list) == 1:
+        name = key_list[0]
+    elif len(key_list) > 1:
+        raise ValueError(f"Multiple keys found for {name}: {key_list}.")
+
+    return CONFIG.get(name, {})
+
+
+def get_config_for_data_class(data_class) -> dict:
+    data_class_name = str(data_class.__name__)
+    sub_dict = get_config_from_string(data_class_name)
+    return {
+        key: value
+        for (key, value) in sub_dict.items()
+        if key in data_class.__dataclass_fields__
+    }
+
+
+# Initialise cabaret
+cabaret_camera = cabaret.Camera(**get_config_for_data_class(cabaret.Camera))
+cabaret_site = cabaret.Site(**get_config_for_data_class(cabaret.Site))
+cabaret_telescope = cabaret.Telescope(**get_config_for_data_class(cabaret.Telescope))
+focuser_config = get_config_from_string("Focuser")
+
+cabaret_observatory = cabaret.Observatory(
+    camera=cabaret_camera, site=cabaret_site, telescope=cabaret_telescope
 )
+logger.debug(f"Cabaret Observatory initialised: {cabaret_observatory}")
 
-cabaret_site = cabaret.Site(
-    sky_background=config["SITE"]["sky_background"],  # e-/m2/arcsec2/s
-    seeing=config["SITE"]["seeing"],  # arcsec
-)
-
-cabaret_telescope = cabaret.Telescope(
-    focal_length=telescope.FocalLength,  # meters
-    diameter=telescope.ApertureDiameter,  # meters
-)
+# Initialise Ascom
+telescope = Telescope(CONFIG["TELESCOPE_IP"], CONFIG["TELESCOPE_DEVICE_NUMBER"])
+focuser = Focuser(CONFIG["FOCUSER_IP"], CONFIG["FOCUSER_DEVICE_NUMBER"])
 
 print(cabaret_telescope)
 
@@ -88,44 +96,7 @@ class ASCOM_Camera:
 camera = ASCOM_Camera()
 
 
-# @dataclass
-# class Camera:
-#     name: str = "gaia-camera-simulated"
-#     width: int = 1024  # pixels
-#     height: int = 1024  # pixels
-#     bin_x: int = 1  # binning factor in x
-#     bin_y: int = 1  # binning factor in y
-#     pitch: float = 13.5  # pixel pitch, microns
-#     plate_scale: float | None = (
-#         None  # arcsec/pixel (calculated from pitch+telescope if None)
-#     )
-#     max_adu: int = 2**16 - 1  # maximum ADU value
-#     well_depth: int = 2**16 - 1  # electrons
-#     bias: int = 300  # ADU
-#     gain: float = 1.0  # e-/ADU
-#     read_noise: float = 6.2  # e-
-#     dark_current: float = 0.2  # e-/s
-#     average_quantum_efficiency: float = 0.8  # fraction
-
-
-# @dataclass
-# class Telescope:
-#     focal_length: float = 8.0  # meters
-#     diameter: float = 1.0  # meters
-#     collecting_area: float | None = None  # m2 (calculated from diameter if None)
-
-
-# @dataclass
-# class Site:
-#     sky_background: float = 150  # for I+z band in Paranal, e-/m2/arcsec2/s
-#     seeing: float = 1.3  # arcsec
-
-
-print("Starting simulator with config:")
-print(config)
-
-
-if config["FLATS"]:
+if CONFIG["FLATS"]:
     obs_lat = telescope.SiteLatitude
     obs_lon = telescope.SiteLongitude
     obs_alt = telescope.SiteElevation
@@ -142,30 +113,28 @@ def tracking_error():
 
 
 def generate_image(exp_time, light=1):
-
     if light == 1:
-
         # get telescope position
         ra = (telescope.RightAscension / 24) * 360
         dec = telescope.Declination
 
-        seeing_multiplier = (
-            1
-            + np.abs(focuser.Position - config["FOCUSER"]["sharp_pos"])
-            / config["FOCUSER"]["blurred_offset"]
-        )
+        seeing_multiplier = 1 + np.abs(
+            focuser.Position - focuser_config.get("sharp_pos", 10_000)
+        ) / focuser_config.get("blurred_offset", 100)
 
         if seeing_multiplier > 5:
             seeing_multiplier = 5
 
-        cabaret_site.seeing = config["SITE"]["seeing"] * seeing_multiplier  # arcsec
+        logger.info(
+            f"Generating image with: RA: {ra}, Dec: {dec}, Exposure time: {exp_time}, "
+            f"Seeing: {cabaret_site.seeing}, Seeing multiplier: {seeing_multiplier}, "
+            f"for focuser position {focuser.Position}."
+        )
 
-        print()
-        print("Telescope position:")
-        print(ra, dec)
+        cabaret_site.seeing = cabaret_site.seeing * seeing_multiplier  # arcsec
 
         # add tracking error
-        if config["TRACKING_ERROR"]:
+        if CONFIG["TRACKING_ERROR"]:
             tracking_error_ra, tracking_error_dec = tracking_error()
 
             ra += tracking_error_ra
@@ -180,11 +149,10 @@ def generate_image(exp_time, light=1):
             camera=cabaret_camera,
             site=cabaret_site,
             telescope=cabaret_telescope,
-            tmass=config["TMASS"],
+            tmass=CONFIG["TMASS"],
         )
 
-        if config["FLATS"]:
-
+        if CONFIG["FLATS"]:
             # add sun scattered light during twilight for flats
             obs_time = Time.now()  # Time('2022-08-06T22:52:57.000', scale='utc')
             sun_position = get_sun(obs_time)
@@ -231,7 +199,7 @@ def generate_image(exp_time, light=1):
     image = np.clip(image, 0, cabaret_camera.max_adu)
 
     # save as fits
-    # if config['SAVE_IMAGES']:
+    # if CONFIG['SAVE_IMAGES']:
     #     hdu = fits.PrimaryHDU(image)
     #     hdr = hdu.header
     #     hdr.update(wcs.to_header())
@@ -247,7 +215,6 @@ def generate_image(exp_time, light=1):
 
 
 async def bytes_generator(image_array):
-
     b = int(1).to_bytes(4, "little")  # metaversion
     b += int(0).to_bytes(4, "little")  # error
     b += int(0).to_bytes(4, "little")  # clientid
